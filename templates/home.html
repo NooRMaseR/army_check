@@ -1,0 +1,289 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>منظومة الزوار</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f5f5;
+        padding: 20px;
+        direction: rtl;
+      }
+
+      h1 {
+        text-align: center;
+      }
+
+      #error-msg {
+        color: red;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+      }
+
+      th {
+        background-color: #007BFF;
+        color: white;
+      }
+
+      td {
+        background-color: #5f5d5d;
+        color: white;
+      }
+
+      .operations {
+        background-color: transparent;
+        color: black;
+      }
+
+      input,
+      button {
+        padding: 10px;
+        margin: 5px;
+        font-size: 16px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .inputs-holder {
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>منظومة تسجيل الزوار</h1>
+
+    <div class="inputs-holder">
+      <input type="text" id="name" placeholder="الاسم">
+      <input type="text" id="rank" placeholder="الرتبه" list="ranks">
+      <datalist id="ranks">
+        {% for i in ranks %}
+        <option value="{{i}}">{{i}}</option>
+        {% endfor %}
+      </datalist>
+
+      <input type="text" id="code" placeholder="الكود">
+      <input type="text" id="branch" placeholder="الفرع" list="branches">
+      <datalist id="branches">
+        {% for i in branches %}
+        <option value="{{i}}">{{i}}</option>
+        {% endfor %}
+      </datalist>
+      <button onclick="sendRequest()">إضافة</button>
+    </div>
+
+    <div class="inputs-holder">
+      <input type="search" id="search" placeholder="بحث عن كود..." list="codes">
+      <datalist id="codes">
+        {% for user in users %}
+        <option value="{{user.code}}">{{user.code}}</option>
+        {% endfor %}
+      </datalist>
+      <button onclick="search()">بحث</button>
+      <button onclick="reset()">اعادة ضبط</button>
+    </div>
+    <p id="error-msg"></p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الاسم</th>
+          <th>الرتبه</th>
+          <th>الفرع</th>
+          <th>الرد</th>
+          <th>عمليات</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        {% for user in users %}
+        <tr data-id="{{user.code}}">
+          <td>{{ user.code }}</td>
+          <td>{{ user.name }}</td>
+          <td>{{ user.rank }}</td>
+          <td>{{ user.branch }}</td>
+
+          {% if user.request.accepted == 'انتظار' %}
+          <td style="background-color: yellow; color: black;">
+            {{ user.request.accepted }}
+          </td>
+
+          {% elif user.request.accepted == 'موافق' %}
+          <td style="background-color: green;">
+            {{ user.request.accepted }}
+          </td>
+
+          {% else %}
+          <td style="background-color: red;">
+            {{ user.request.accepted }}
+          </td>
+
+          {% endif %}
+          <td class="operations">
+            <button class="send-pre-req" onclick="sendPreRequest('{{user.code}}');">ارسال طلب</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <script>
+      const socket = new WebSocket("ws://{{ local_ip }}:8000/ws/");
+      const tableBody = document.getElementById("table-body");
+      const searchInput = document.getElementById("search");
+      const errorP = document.getElementById("error-msg");
+      const users = [];
+
+      for (let userIndex = 0; userIndex < tableBody.children.length; userIndex++) {
+        const currentRow = tableBody.children[userIndex].children;
+
+        users.push(
+          {
+            code: currentRow[0].textContent,
+            name: currentRow[1].textContent,
+            rank: currentRow[2].textContent,
+            branch: currentRow[3].textContent,
+            request: { accepted: currentRow[4].textContent.trim() },
+          }
+        );
+      };
+
+      function createRow(data) {
+        return `
+        <tr data-id='${data.code}'>
+          <td>${data.code}</td>
+          <td>${data.name}</td>
+          <td>${data.rank}</td>
+          <td>${data.branch}</td>
+          ${data.request.accepted === "انتظار" ?
+           `<td style="background-color: yellow; color: black;">
+            ${data.request.accepted}
+          </td>` : data.request.accepted === "موافق" ? `
+          <td style="background-color: green; color: white;">
+            ${data.request.accepted}
+          </td>` : `<td style="background-color: red; color: white;">
+            ${data.request.accepted}
+          </td>`}
+          <td class="operations">
+            <button class="send-pre-req">ارسال طلب</button>
+          </td>
+        </tr>
+        `;
+      }
+
+      socket.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+
+        switch (data.type) {
+          case "send.request":
+            tableBody.innerHTML += createRow(data);
+            users.push({
+              code: data.code,
+              name: data.name,
+              rank: data.rank,
+              branch: data.branch,
+              request: { accepted: data.request.accepted }
+            });
+            break;
+
+
+          case "send.pre.request":
+            const index = users.findIndex((v) => v.code === data.code);
+            users[index].request = data.request;
+
+            const element = document.querySelector(`[data-id='${data.code}'] td:nth-child(5)`);
+            element.style.backgroundColor = "yellow";
+            element.style.color = "black";
+            element.textContent = data.request.accepted;
+            break;
+
+
+          case "send.request.error":
+            errorP.textContent = data.message;
+            setTimeout(() => errorP.textContent = null, 5000)
+            break;
+        }
+      }
+
+      function createSound(accepted) {
+        if (accepted === "موافق") {
+          const audio = new Audio("{% static 'acceptation.mp3' %}");
+          audio.play();
+        } else if (accepted === "تم الرفض") {
+          const audio = new Audio("{% static 'denied.mp3' %}");
+          audio.play();
+        }
+      }
+
+      function sendRequest(data) {
+        const name = document.getElementById("name");
+        const rank = document.getElementById("rank");
+        const code = document.getElementById("code");
+        const branch = document.getElementById("branch");
+
+        socket.send(
+          JSON.stringify(
+            {
+              type: 'request',
+              name: name.value,
+              rank: rank.value,
+              code: code.value,
+              branch: branch.value
+            }
+          )
+        );
+
+        name.value = null;
+        rank.value = null;
+        code.value = null;
+        branch.value = null;
+      };
+
+      function sendPreRequest(code) {
+        const found = users.find((v) => v.code === code);
+        socket.send(
+          JSON.stringify(
+            {
+              type: 'pre_request',
+              name: found.name,
+              rank: found.rank,
+              code: found.code,
+              branch: found.branch
+            }
+          )
+        );
+      }
+
+      function search() {
+        tableBody.innerHTML = null;
+        const foundData = users.find((v) => v.code === searchInput.value);
+        tableBody.innerHTML = createRow(foundData);
+      };
+      
+      function reset() {
+        tableBody.innerHTML = null;
+        for (let i = 0; i < users.length; i++) {
+          tableBody.innerHTML += createRow(users[i]);
+        };
+      };
+    </script>
+  </body>
+
+</html>
