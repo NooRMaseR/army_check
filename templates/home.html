@@ -6,68 +6,17 @@
   <head>
     <meta charset="UTF-8">
     <title>منظومة الزوار</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
     <style>
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f5f5f5;
-        padding: 20px;
-        direction: rtl;
-      }
-
-      h1 {
-        text-align: center;
-      }
-
-      #error-msg {
-        color: red;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-      }
-
-      th,
-      td {
-        border: 1px solid #ccc;
-        padding: 10px;
-        text-align: center;
-      }
-
-      th {
-        background-color: #007BFF;
-        color: white;
-      }
-
-      td {
-        background-color: #5f5d5d;
-        color: white;
-      }
-
-      .operations {
-        background-color: transparent;
-        color: black;
-      }
-
-      input,
       button {
-        padding: 10px;
-        margin: 5px;
-        font-size: 16px;
-      }
-
-      button {
-        cursor: pointer;
-      }
-
-      .inputs-holder {
-        margin-bottom: 20px;
+        color: #fff;
+        background-color: #4376ff;
       }
     </style>
   </head>
 
   <body>
+    <h5 id="ipc">{{local_ip}}</h5>
     <h1>منظومة تسجيل الزوار</h1>
 
     <div class="inputs-holder">
@@ -97,7 +46,7 @@
         {% endfor %}
       </datalist>
       <button onclick="search()">بحث</button>
-      <button onclick="reset()">اعادة ضبط</button>
+      <button onclick="reset()">اعادة العساكر</button>
     </div>
     <p id="error-msg"></p>
 
@@ -130,9 +79,14 @@
             {{ user.request.accepted }}
           </td>
 
-          {% else %}
+          {% elif user.request.accepted == 'تم الرفض' %}
           <td style="background-color: red;">
             {{ user.request.accepted }}
+          </td>
+
+          {% else %}
+          <td style="background-color: red;">
+            لا يوجد طلب
           </td>
 
           {% endif %}
@@ -144,146 +98,7 @@
       </tbody>
     </table>
 
-    <script>
-      const socket = new WebSocket("ws://{{ local_ip }}:8000/ws/");
-      const tableBody = document.getElementById("table-body");
-      const searchInput = document.getElementById("search");
-      const errorP = document.getElementById("error-msg");
-      const users = [];
-
-      for (let userIndex = 0; userIndex < tableBody.children.length; userIndex++) {
-        const currentRow = tableBody.children[userIndex].children;
-
-        users.push(
-          {
-            code: currentRow[0].textContent,
-            name: currentRow[1].textContent,
-            rank: currentRow[2].textContent,
-            branch: currentRow[3].textContent,
-            request: { accepted: currentRow[4].textContent.trim() },
-          }
-        );
-      };
-
-      function createRow(data) {
-        return `
-        <tr data-id='${data.code}'>
-          <td>${data.code}</td>
-          <td>${data.name}</td>
-          <td>${data.rank}</td>
-          <td>${data.branch}</td>
-          ${data.request.accepted === "انتظار" ?
-           `<td style="background-color: yellow; color: black;">
-            ${data.request.accepted}
-          </td>` : data.request.accepted === "موافق" ? `
-          <td style="background-color: green; color: white;">
-            ${data.request.accepted}
-          </td>` : `<td style="background-color: red; color: white;">
-            ${data.request.accepted}
-          </td>`}
-          <td class="operations">
-            <button class="send-pre-req">ارسال طلب</button>
-          </td>
-        </tr>
-        `;
-      }
-
-      socket.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-
-        switch (data.type) {
-          case "send.request":
-            tableBody.innerHTML += createRow(data);
-            users.push({
-              code: data.code,
-              name: data.name,
-              rank: data.rank,
-              branch: data.branch,
-              request: { accepted: data.request.accepted }
-            });
-            break;
-
-
-          case "send.pre.request":
-            const index = users.findIndex((v) => v.code === data.code);
-            users[index].request = data.request;
-
-            const element = document.querySelector(`[data-id='${data.code}'] td:nth-child(5)`);
-            element.style.backgroundColor = "yellow";
-            element.style.color = "black";
-            element.textContent = data.request.accepted;
-            break;
-
-
-          case "send.request.error":
-            errorP.textContent = data.message;
-            setTimeout(() => errorP.textContent = null, 5000)
-            break;
-        }
-      }
-
-      function createSound(accepted) {
-        if (accepted === "موافق") {
-          const audio = new Audio("{% static 'acceptation.mp3' %}");
-          audio.play();
-        } else if (accepted === "تم الرفض") {
-          const audio = new Audio("{% static 'denied.mp3' %}");
-          audio.play();
-        }
-      }
-
-      function sendRequest(data) {
-        const name = document.getElementById("name");
-        const rank = document.getElementById("rank");
-        const code = document.getElementById("code");
-        const branch = document.getElementById("branch");
-
-        socket.send(
-          JSON.stringify(
-            {
-              type: 'request',
-              name: name.value,
-              rank: rank.value,
-              code: code.value,
-              branch: branch.value
-            }
-          )
-        );
-
-        name.value = null;
-        rank.value = null;
-        code.value = null;
-        branch.value = null;
-      };
-
-      function sendPreRequest(code) {
-        const found = users.find((v) => v.code === code);
-        socket.send(
-          JSON.stringify(
-            {
-              type: 'pre_request',
-              name: found.name,
-              rank: found.rank,
-              code: found.code,
-              branch: found.branch
-            }
-          )
-        );
-      }
-
-      function search() {
-        tableBody.innerHTML = null;
-        const foundData = users.find((v) => v.code === searchInput.value);
-        tableBody.innerHTML = createRow(foundData);
-      };
-      
-      function reset() {
-        tableBody.innerHTML = null;
-        for (let i = 0; i < users.length; i++) {
-          tableBody.innerHTML += createRow(users[i]);
-        };
-      };
-    </script>
+    <script src="{% static 'js/home.js' %}"></script>
   </body>
 
 </html>

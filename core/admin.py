@@ -10,7 +10,6 @@ class ArmyPersonModel(admin.ModelAdmin):
     search_help_text = "ابحث عن كود...."
     list_display = ("code", "name", "branch", "rank")
 
-admin.site.register(models.PendingRequest)
 admin.site.register(models.Branch)
 admin.site.register(models.Rank)
 admin.site.unregister(Group)

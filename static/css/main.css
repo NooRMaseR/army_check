@@ -1,0 +1,72 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    padding: 20px;
+    direction: rtl;
+}
+
+h1 {
+    text-align: center;
+}
+
+#error-msg {
+    color: red;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th,
+td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background-color: #007BFF;
+    color: white;
+}
+
+td {
+    background-color: #5f5d5d;
+    color: white;
+}
+
+.operations {
+    background-color: transparent;
+    color: black;
+}
+
+input,
+button {
+    padding: 10px;
+    margin: 5px;
+}
+
+input {
+    font-size: 16px;
+}
+
+button {
+    cursor: pointer;
+    font-size: large;
+    border: none;
+    color: #fff;
+    border-radius: 1rem;
+}
+
+.send-accept {
+    background-color: green;
+}
+
+.send-denied {
+    background-color: red;
+}
+
+h5 {
+    display: none;
+}

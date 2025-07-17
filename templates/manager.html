@@ -1,0 +1,54 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>منظومة الزوار</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  </head>
+
+  <body>
+    <h5 id="ipc">{{local_ip}}</h5>
+    <h1>منظومة تسجيل الزوار</h1>
+    <p id="error-msg"></p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الاسم</th>
+          <th>الرتبه</th>
+          <th>الفرع</th>
+          <th>الرد</th>
+          <th>عمليات</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        {% for req in requests %}
+        <tr data-id="{{req.user.code}}">
+          <td>{{ req.user.code }}</td>
+          <td>{{ req.user.name }}</td>
+          <td>{{ req.user.rank }}</td>
+          <td>{{ req.user.branch }}</td>
+
+          {% if req.accepted == 'انتظار' %}
+          <td style="background-color: yellow; color: black;">
+            {{ req.accepted }}
+          </td>
+
+          {% endif %}
+          <td class="operations">
+            <button class="send-accept" onclick="sendAcceptAction('{{req.user.code}}');">موافق</button>
+            <button class="send-denied" onclick="sendDeniedAction('{{req.user.code}}');">رفض</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <script src="{% static 'js/manager.js' %}"></script>
+  </body>
+
+</html>

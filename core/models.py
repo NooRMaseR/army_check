@@ -32,7 +32,7 @@ class ArmyPerson(models.Model):
         verbose_name_plural = "العساكر"
     
     def __str__(self):
-        return f"{self.rank} - {self.branch} - {self.name}"
+        return f"{self.rank} - {self.branch} - {self.name} - {self.code}"
 
 class RequestStatus(models.TextChoices):
     PENDING = "انتظار"

@@ -9,7 +9,6 @@ class RequestModel(BaseModel):
     code: str
     
 class RequestActionModel(BaseModel):
-    type: Literal['action']
-    action_response: bool
+    type: Literal['accepted', 'denied']
     code: str
     
